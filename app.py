@@ -75,9 +75,3 @@ if choice == "prediction":
 
 elif choice == "visualisation":
     st.subheader("Statistiques générales")
-    try:
-        df = pd.read_csv("Voitures.csv", encoding='latin1')
-        #df = pd.read_csv("Voitures.csv")
-        st.line_chart(df)
-    except Exception as e:
-        st.error(f"Error loading CSV file: {e}")
