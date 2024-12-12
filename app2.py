@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Charger le modèle (ajustez le chemin selon vos fichiers)
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("pneumonie1.h5")  # Remplacez par le chemin vers votre modèle sauvegardé
+    return tf.keras.models.load_model("converted_model.h5")  # Remplacez par le chemin vers votre modèle sauvegardé
  
 model = load_model()
  
@@ -22,9 +22,9 @@ def predict(model, img):
  
     # Préparation de l'image
     img_array = tf.keras.preprocessing.image.img_to_array(img)
-    img_array = tf.image.resize(img_array, (256, 256))  # Redimensionner selon le modèle
+    img_array = tf.image.resize(img_array, (150, 150))  # Redimensionner selon le modèle
     img_array = img_array / 255.0  # Normalisation (important si le modèle s'attend à des valeurs entre 0 et 1)
-    img_array = tf.expand_dims(img_array, 0)  # Ajouter une dimension batch
+    img_array = tf.expand_dims(img_array, 0)  # Ajouter une dimension batch (forme: (1, 150, 150, 1))
  
     # Vérification de la forme
     st.write("Forme de l'image entrée dans le modèle :", img_array.shape)
@@ -32,7 +32,14 @@ def predict(model, img):
     # Prédiction
     predictions = model.predict(img_array)
     predicted_class = class_train[np.argmax(predictions[0])]
-    confidence = round(100 * (np.max(predictions[0])), 2)
+    confidence = round(100 * np.max(predictions[0]), 2)
+ 
+    # Vérification de la confiance
+    if confidence > 50:
+        predicted_class = "Normal"
+    else:
+        predicted_class = "Pneumonia"
+ 
     return predicted_class, confidence
  
 # Interface Streamlit

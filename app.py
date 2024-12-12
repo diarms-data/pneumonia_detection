@@ -12,10 +12,6 @@ def load_model():
 
 model = load_model() 
 
-st.write("""
-# My First App
-Hello *world!*
-""")
 st.title("DETECTION DE LA PNEUMONIE")
 
 #picture = st.camera_input("Take a picture", disabled=False)
