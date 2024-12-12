@@ -1,73 +1,69 @@
 import streamlit as st
-import pandas as pd
+import tensorflow as tf
 import numpy as np
 from PIL import Image
-import tensorflow as tf
 import matplotlib.pyplot as plt
-
-# Charger le modèle
-@st.cache_resource # Cache le chargement du modèle pour améliorer les performances
+ 
+# Charger le modèle (ajustez le chemin selon vos fichiers)
+@st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("pneumonie1.h5")
-
-model = load_model() 
-
-st.title("DETECTION DE LA PNEUMONIE")
-
-#picture = st.camera_input("Take a picture", disabled=False)
-#if picture: 
-    #st.image(picture)
-
-fonctionnalities = ["prediction", "visualisation"]
-choice = st.sidebar.selectbox("Menu", fonctionnalities)
-
-if choice == "prediction":
-    st.subheader("Faire une prédiction")
-    data = st.file_uploader("Charger l'image", type=["jpg", "png"])
-    
-    if data is not None:
-        image = Image.open(data)
-        #st.image(image, caption='Image Chargée', use_column_width=True)
-    predict = st.button(label='Predict')
-
-    if predict and data is not None:
-        def preprocess_image(image, target_size):
-            image = image.convert("L")  # Convertir en niveaux de gris
-            image = image.resize(target_size)  # Redimensionnement
-            image = np.array(image)  # Conversion en tableau NumPy
-            image = image / 255.0  # Normalisation
-            image = np.expand_dims(image, axis=-1)  # Ajouter une dimension pour le canal (grayscale)
-            image = np.expand_dims(image, axis=0)  # Ajouter une dimension batch
-            return image
-        
-        processed_image = preprocess_image(image, target_size=(256,256))
-        # Vérifiez la forme avant prédiction
-        st.write(f"Shape of processed image: {processed_image.shape}")
-
-        class_names = ["Normal", "Pneumonia"]
-        # Faire la prédiction
-        def predict(model, image):
-            predictions = model.predict(image)
-            predicted_class = class_names[np.argmax(predictions[0])]
-            confidence = round(100 * (np.max(predictions[0])), 2)
-            return predicted_class, confidence
-
-         # Afficher le résultat
-        predicted_class, confidence = predict(model, processed_image)
-        st.write(f"**Résultat de la prédiction :** {predicted_class}")
-        st.write(f"**Score de confiance :** {confidence}")
-
-        # Visualiser la prédiction
-
-        fig, ax = plt.subplots()
-
-        #ax.imshow(np.squeeze(image[0]))  # Supprimer la dimension batch pour l'affichage
-        #ax.imshow(np.array(image))
-        ax.imshow(processed_image[0])
-        ax.set_title(f"Prédiction : {predicted_class} ({confidence}%)")
-
-        st.pyplot(fig)
-
-
-elif choice == "visualisation":
-    st.subheader("Statistiques générales")
+    return tf.keras.models.load_model("converted_model.h5")  # Remplacez par le chemin vers votre modèle sauvegardé
+ 
+model = load_model()
+ 
+# Classes (ajustez selon votre jeu de données)
+class_train = ["Normal", "Pneumonia"]  # Remplacez avec les noms des classes
+ 
+# Fonction de prédiction
+def predict(model, img):
+    # Vérifier et convertir en 3 canaux si nécessaire
+    if img.mode != "L":
+        img = img.convert("L")
+ 
+    # Préparation de l'image
+    img_array = tf.keras.preprocessing.image.img_to_array(img)
+    img_array = tf.image.resize(img_array, (150, 150))  # Redimensionner selon le modèle
+    img_array = img_array / 255.0  # Normalisation (important si le modèle s'attend à des valeurs entre 0 et 1)
+    img_array = tf.expand_dims(img_array, 0)  # Ajouter une dimension batch (forme: (1, 150, 150, 1))
+ 
+    # Vérification de la forme
+    st.write("Forme de l'image entrée dans le modèle :", img_array.shape)
+ 
+    # Prédiction
+    predictions = model.predict(img_array)
+    predicted_class = class_train[np.argmax(predictions[0])]
+    confidence = round(100 * np.max(predictions[0]), 2)
+ 
+    # Vérification de la confiance
+    if confidence > 50:
+        predicted_class = "Normal"
+    else:
+        predicted_class = "Pneumonia"
+ 
+    return predicted_class, confidence
+ 
+# Interface Streamlit
+st.title("Interface de Prédiction d'Images")
+st.write("Chargez une image pour obtenir la prédiction du modèle.")
+ 
+uploaded_file = st.file_uploader("Choisissez une image...", type=["jpg", "png", "jpeg"])
+ 
+if uploaded_file is not None:
+    # Charger et afficher l'image
+    image = Image.open(uploaded_file)
+    st.image(image, caption="Image chargée.", use_column_width=True)
+ 
+    # Prédire sur l'image chargée
+    with st.spinner("Prédiction en cours..."):
+        predicted_class, confidence = predict(model, image)
+ 
+    st.success(f"Classe prédite : {predicted_class}")
+    st.write(f"Confiance : {confidence}%")
+ 
+    # Option pour afficher la prédiction sur l'image
+    if st.checkbox("Afficher la prédiction sur l'image"):
+        plt.figure(figsize=(4, 4))
+        plt.imshow(image)
+        plt.title(f"{predicted_class} ({confidence}%)")
+        plt.axis("off")
+        st.pyplot(plt)
